@@ -1,4 +1,6 @@
 import FavoriteButton from '../common/FavoriteButton'
+import ShareButton from '../common/ShareButton'
+import LazyImage from '../common/LazyImage'
 import { formatPrice, truncate } from '../../utils/helpers'
 
 /**
@@ -24,13 +26,14 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
         onClick={() => onSelect(gun)}
         aria-label={`View ${gun.name}`}
       >
-        <img
+        <LazyImage
           className="card-img"
+          wrapperClassName="card-img-wrap"
           src={imgSrc}
           alt={gun.name}
           width="240"
           height="180"
-          loading="lazy"
+          fallbackSrc="/guns/pistol.svg"
         />
 
         <span className="name display">{gun.name}</span>
@@ -50,6 +53,7 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
       {/* Floating actions row */}
       <div className="card-actions">
         <FavoriteButton gunId={gun.id || gun.name} />
+        <ShareButton gun={gun} className="card-act-btn" />
 
         {onEdit && (
           <button

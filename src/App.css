@@ -1518,3 +1518,231 @@
     transform: translateY(0);
   }
 }
+
+
+/* ---------------------------------------------------------------------------
+ * Catalog Pagination Controls
+ * --------------------------------------------------------------------------- */
+.pagination-container {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+@media (min-width: 640px) {
+  .pagination-container {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.9rem;
+  color: var(--steel);
+}
+
+.pagination-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-select {
+  padding: 4px 8px;
+  background: var(--lift);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--lift);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--brass);
+  background: var(--paper);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-page-btn {
+  min-width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--lift);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination-page-btn:hover {
+  border-color: var(--brass);
+}
+
+.pagination-page-btn--active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.pagination-ellipsis {
+  padding: 0 4px;
+  color: var(--steel);
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Share Button & Floating Toast
+ * --------------------------------------------------------------------------- */
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-actions .share-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-actions .share-btn:hover {
+  transform: scale(1.08);
+  border-color: var(--brass);
+}
+
+.share-btn--copied {
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+}
+
+.share-icon--success {
+  color: #10b981;
+}
+
+.share-btn__label {
+  font-size: 0.9rem;
+}
+
+.share-floating-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #18181b;
+  color: #f4f4f5;
+  border: 1px solid var(--brass);
+  border-radius: 8px;
+  padding: 12px 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 999;
+  animation: slideUp 0.25s ease-out;
+}
+
+.share-floating-toast svg {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Lazy Loading Images & Skeleton Shimmer
+ * --------------------------------------------------------------------------- */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.lazy-img-wrapper {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.card-img-wrap {
+  width: 100%;
+  height: 180px;
+  background: #f7f9fa;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.card-img-wrap .card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.detail-img-wrap {
+  width: 100%;
+  min-height: 280px;
+  max-height: 420px;
+  background: #f7f9fa;
+  border-right: 1px solid var(--line);
+}
+
+.detail-img-wrap .detail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-right: none;
+}

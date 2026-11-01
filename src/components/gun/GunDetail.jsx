@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { ArrowLeft, Star, Send, Loader } from 'lucide-react'
 import FavoriteButton from '../common/FavoriteButton'
+import ShareButton from '../common/ShareButton'
+import LazyImage from '../common/LazyImage'
 import { useReviews, useCreateReview } from '../../hooks/useReviews'
 import { getUserIdentifier } from '../../services/userService'
 import { formatPrice, averageRating } from '../../utils/helpers'
@@ -66,7 +68,13 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
 
       {/* Hero */}
       <div className="detail-hero">
-        <img className="detail-img" src={imgSrc} alt={gun.name} />
+        <LazyImage
+          className="detail-img"
+          wrapperClassName="detail-img-wrap"
+          src={imgSrc}
+          alt={gun.name}
+          fallbackSrc="/guns/pistol.svg"
+        />
         <div className="detail-info">
           <h1 className="display">{gun.name}</h1>
           <p className="type">
@@ -84,6 +92,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
 
           <div className="detail-actions">
             <FavoriteButton gunId={gun.id || gun.name} />
+            <ShareButton gun={gun} className="btn btn--outline" showLabel />
             {onEdit && (
               <button type="button" className="btn btn--outline" onClick={() => onEdit(gun)}>
                 Edit
