@@ -2,23 +2,43 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+function diskCacheHeadersPlugin() {
+  const setCacheHeader = (req, res, next) => {
+    if (req.url && /\.(png|svg|jpg|jpeg|webp|gif|ico|js|css|woff2?)$/i.test(req.url)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    }
+    next()
+  }
+
+  return {
+    name: 'vite-plugin-disk-cache-headers',
+    configureServer(server) {
+      server.middlewares.use(setCacheHeader)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(setCacheHeader)
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   server: {
     headers: {
-      'Cache-Control': 'public, max-age=86400', // Enable disk caching for browser
+      'Cache-Control': 'public, max-age=31536000, immutable',
     },
   },
   preview: {
     headers: {
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'public, max-age=31536000, immutable',
     },
   },
   plugins: [
     react(),
+    diskCacheHeadersPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Disable service worker in dev so Chrome DevTools serves from (disk cache) / (memory cache)
+      injectRegister: null, // Do not auto-register SW so browser uses native (disk cache)
       devOptions: {
         enabled: false,
       },
@@ -34,28 +54,6 @@ export default defineConfig({
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) =>
-              url.pathname.includes('/rest/v1/') ||
-              url.pathname.includes('/api/v1/') ||
-              url.hostname.includes('supabase.co'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-query-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
         ],
       },
     }),

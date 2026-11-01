@@ -8,6 +8,29 @@
     <meta name="theme-color" content="#f2f4f5" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Bore &amp; Barrel</title>
+    <script>
+      // Clear lingering service workers so assets load directly from browser (disk cache)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          var hadActive = registrations.length > 0;
+          for (var i = 0; i < registrations.length; i++) {
+            registrations[i].unregister();
+          }
+          if (hadActive && !sessionStorage.getItem('__sw_purged__')) {
+            sessionStorage.setItem('__sw_purged__', '1');
+            if ('caches' in window) {
+              caches.keys().then(function (names) {
+                return Promise.all(names.map(function (n) { return caches.delete(n); }));
+              }).then(function () {
+                window.location.reload();
+              });
+            } else {
+              window.location.reload();
+            }
+          }
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
