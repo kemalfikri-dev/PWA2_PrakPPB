@@ -1,5 +1,6 @@
 import { apiClient, IS_SUPABASE } from '../config/api'
 import queryCache from '../utils/queryCache'
+import queryClient from '../config/queryClient'
 import gunImagesStorage from '../utils/gunImagesStorage'
 
 // ---------------------------------------------------------------------------
@@ -140,6 +141,7 @@ class GunService {
    */
   async createGun(data) {
     queryCache.invalidate('guns')
+    queryClient.invalidateQueries({ queryKey: ['guns'] })
 
     // Persist multiple images locally so they are never lost
     if (Array.isArray(data.images) && data.images.length > 0) {
@@ -186,6 +188,8 @@ class GunService {
   async updateGun(id, data) {
     queryCache.invalidate('guns')
     queryCache.delete(`gun_${id}`)
+    queryClient.invalidateQueries({ queryKey: ['guns'] })
+    queryClient.invalidateQueries({ queryKey: ['gun', id] })
 
     if (Array.isArray(data.images) && data.images.length > 0) {
       gunImagesStorage.saveImages(id, data.images)
@@ -239,6 +243,8 @@ class GunService {
   async deleteGun(id) {
     queryCache.invalidate('guns')
     queryCache.delete(`gun_${id}`)
+    queryClient.invalidateQueries({ queryKey: ['guns'] })
+    queryClient.invalidateQueries({ queryKey: ['gun', id] })
 
     if (IS_SUPABASE) {
       await apiClient.delete(`/rest/v1/products?id=eq.${id}`)

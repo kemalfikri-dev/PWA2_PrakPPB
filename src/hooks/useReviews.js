@@ -1,49 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import reviewService from '../services/reviewService'
 import reviewVotesStorage from '../utils/reviewVotesStorage'
-import queryCache from '../utils/queryCache'
 
 // ---------------------------------------------------------------------------
-// useReviews — fetch reviews for a specific product with Query Caching.
+// useReviews — fetch reviews for a specific product using TanStack React Query.
 // ---------------------------------------------------------------------------
 
 export function useReviews(gunId) {
-  const cacheKey = `reviews_${gunId}`
+  const queryKey = ['reviews', gunId]
 
-  const [reviews, setReviews] = useState(() => {
-    if (!gunId) return []
-    const cached = queryCache.get(cacheKey)
-    const local = reviewVotesStorage.getLocalReviews(gunId)
-    return cached || local || []
-  })
-  const [loading, setLoading] = useState(() => !queryCache.get(cacheKey) && Boolean(gunId))
-  const [error, setError] = useState(null)
-
-  const fetchReviews = useCallback(async (bypassCache = false) => {
-    if (!gunId) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      const cached = bypassCache ? null : queryCache.get(cacheKey)
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!gunId) return []
+      console.log(`[TanStack QueryCache] Network/API call for reviews of ${gunId}`)
       const local = reviewVotesStorage.getLocalReviews(gunId)
-
-      if (cached && !bypassCache) {
-        // Merge cached with any local items
-        const merged = [...local, ...cached.filter((c) => !local.some((l) => l.id === c.id))]
-        setReviews(merged)
-        setLoading(false)
-        return
-      }
-
-      setLoading(true)
-      setError(null)
 
       let apiList = []
       try {
         const response = await reviewService.getReviews(gunId)
-        if (response.success && Array.isArray(response.data)) {
+        if (response && response.success && Array.isArray(response.data)) {
           apiList = response.data
         }
       } catch (e) {
@@ -51,23 +27,19 @@ export function useReviews(gunId) {
       }
 
       // Merge local with API list without duplicate IDs
-      const merged = [...local, ...apiList.filter((a) => !local.some((l) => l.id === a.id))]
-      setReviews(merged)
-      queryCache.set(cacheKey, apiList)
-    } catch (err) {
-      setError(err.message || 'An error occurred while fetching reviews.')
-      const local = reviewVotesStorage.getLocalReviews(gunId)
-      setReviews(local)
-    } finally {
-      setLoading(false)
-    }
-  }, [gunId, cacheKey])
+      return [...local, ...apiList.filter((a) => !local.some((l) => l.id === a.id))]
+    },
+    enabled: Boolean(gunId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchReviews()
-  }, [fetchReviews])
-
-  return { reviews, loading, error, refetch: () => fetchReviews(true) }
+  return {
+    reviews: data || [],
+    loading: isLoading,
+    error: error?.message || null,
+    refetch,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -75,16 +47,10 @@ export function useReviews(gunId) {
 // ---------------------------------------------------------------------------
 
 export function useCreateReview() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(false)
+  const queryClient = useQueryClient()
 
   const createReview = async (gunId, reviewData) => {
     try {
-      setLoading(true)
-      setError(null)
-      setSuccess(false)
-
       let created = null
 
       try {
@@ -101,18 +67,16 @@ export function useCreateReview() {
         created = reviewVotesStorage.saveLocalReview(gunId, reviewData)
       }
 
-      queryCache.delete(`reviews_${gunId}`)
-      setSuccess(true)
+      // Invalidate TanStack query cache
+      await queryClient.invalidateQueries({ queryKey: ['reviews', gunId] })
       return created
     } catch (err) {
-      setError(err.message || 'An error occurred while submitting review.')
+      console.error('Error in createReview:', err)
       return null
-    } finally {
-      setLoading(false)
     }
   }
 
-  return { createReview, loading, error, success }
+  return { createReview, loading: false, error: null }
 }
 
 // ---------------------------------------------------------------------------
@@ -120,14 +84,10 @@ export function useCreateReview() {
 // ---------------------------------------------------------------------------
 
 export function useUpdateReview() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const queryClient = useQueryClient()
 
   const updateReview = async (gunId, reviewId, updatedData) => {
     try {
-      setLoading(true)
-      setError(null)
-
       let updated = null
       try {
         const response = await reviewService.updateReview(reviewId, updatedData)
@@ -138,20 +98,17 @@ export function useUpdateReview() {
         console.warn('API updateReview failed, attempting local update:', e)
       }
 
-      // Update in local store as well
       const localUpdated = reviewVotesStorage.updateLocalReview(gunId, reviewId, updatedData)
-      queryCache.delete(`reviews_${gunId}`)
+      await queryClient.invalidateQueries({ queryKey: ['reviews', gunId] })
 
       return updated || localUpdated || true
     } catch (err) {
-      setError(err.message || 'Failed to update review.')
+      console.error('Error in updateReview:', err)
       return false
-    } finally {
-      setLoading(false)
     }
   }
 
-  return { updateReview, loading, error }
+  return { updateReview, loading: false, error: null }
 }
 
 // ---------------------------------------------------------------------------
@@ -159,14 +116,10 @@ export function useUpdateReview() {
 // ---------------------------------------------------------------------------
 
 export function useDeleteReview() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const queryClient = useQueryClient()
 
   const deleteReview = async (gunId, reviewId) => {
     try {
-      setLoading(true)
-      setError(null)
-
       try {
         await reviewService.deleteReview(reviewId)
       } catch (e) {
@@ -174,15 +127,13 @@ export function useDeleteReview() {
       }
 
       reviewVotesStorage.deleteLocalReview(gunId, reviewId)
-      queryCache.delete(`reviews_${gunId}`)
+      await queryClient.invalidateQueries({ queryKey: ['reviews', gunId] })
       return true
     } catch (err) {
-      setError(err.message || 'Failed to delete review.')
+      console.error('Error in deleteReview:', err)
       return false
-    } finally {
-      setLoading(false)
     }
   }
 
-  return { deleteReview, loading, error }
+  return { deleteReview, loading: false, error: null }
 }

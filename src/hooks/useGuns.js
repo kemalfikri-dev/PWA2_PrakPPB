@@ -1,121 +1,69 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import gunService from '../services/gunService'
-import queryCache from '../utils/queryCache'
 
 // ---------------------------------------------------------------------------
-// useGuns — fetch the paginated / filtered product list from the API with Query Caching.
+// useGuns — fetch the paginated / filtered product list using TanStack React Query.
 // ---------------------------------------------------------------------------
 
 export function useGuns(params = {}) {
-  const paramKey = JSON.stringify(params)
-  const cacheKey = `guns_${paramKey}`
+  const queryClient = useQueryClient()
+  const queryKey = ['guns', params]
 
-  // Initialize with cached data if available (zero-latency cache hit)
-  const [guns, setGuns] = useState(() => {
-    const cached = queryCache.get(cacheKey)
-    return cached?.data || []
-  })
-  const [loading, setLoading] = useState(() => !queryCache.get(cacheKey))
-  const [error, setError] = useState(null)
-  const [pagination, setPagination] = useState(() => {
-    const cached = queryCache.get(cacheKey)
-    return cached?.pagination || null
-  })
-
-  const fetchGuns = useCallback(async (bypassCache = false) => {
-    try {
-      const cached = bypassCache ? null : queryCache.get(cacheKey)
-      if (cached) {
-        setGuns(cached.data || [])
-        setPagination(cached.pagination || null)
-        setLoading(false)
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      console.log('[TanStack QueryCache] Network/API call for guns:', params)
       const response = await gunService.getGuns(params)
-
-      if (response.success) {
-        setGuns(response.data || [])
-        setPagination(response.pagination || null)
-        // Store in query cache
-        queryCache.set(cacheKey, {
-          data: response.data || [],
-          pagination: response.pagination || null,
-        })
-      } else {
-        setError(response.message || 'Failed to fetch products.')
+      if (response && response.success) {
+        return response
       }
-    } catch (err) {
-      setError(err.message || 'An error occurred while fetching products.')
-      // If network fails but we had cached guns, keep them
-      const cached = queryCache.get(cacheKey)
-      if (!cached) {
-        setGuns([])
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [cacheKey, params])
+      throw new Error(response?.message || 'Failed to fetch products.')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes fresh
+    gcTime: 15 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchGuns()
-  }, [fetchGuns])
-
-  return { guns, loading, error, pagination, refetch: () => fetchGuns(true) }
+  return {
+    guns: data?.data || [],
+    loading: isLoading,
+    isFetching,
+    error: error?.message || null,
+    pagination: data?.pagination || null,
+    refetch,
+    invalidate: () => queryClient.invalidateQueries({ queryKey: ['guns'] }),
+  }
 }
 
 // ---------------------------------------------------------------------------
-// useGunById — fetch a single product by its UUID with Query Caching.
+// useGunById — fetch a single product by its UUID using TanStack React Query.
 // ---------------------------------------------------------------------------
 
 export function useGunById(id) {
-  const cacheKey = `gun_${id}`
+  const queryClient = useQueryClient()
+  const queryKey = ['gun', id]
 
-  const [gun, setGun] = useState(() => queryCache.get(cacheKey) || null)
-  const [loading, setLoading] = useState(() => !queryCache.get(cacheKey) && Boolean(id))
-  const [error, setError] = useState(null)
-
-  const fetchGun = useCallback(async (bypassCache = false) => {
-    if (!id) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      const cached = bypassCache ? null : queryCache.get(cacheKey)
-      if (cached) {
-        setGun(cached)
-        setLoading(false)
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!id) return null
+      console.log(`[TanStack QueryCache] Network/API call for gun ${id}`)
       const response = await gunService.getGunById(id)
-
-      if (response.success) {
-        setGun(response.data)
-        queryCache.set(cacheKey, response.data)
-      } else {
-        setError(response.message || 'Product not found.')
+      if (response && response.success) {
+        return response.data
       }
-    } catch (err) {
-      setError(err.message || 'Failed to load product details.')
-      if (!queryCache.get(cacheKey)) {
-        setGun(null)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [id, cacheKey])
+      throw new Error(response?.message || 'Product not found.')
+    },
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchGun()
-  }, [fetchGun])
-
-  return { gun, loading, error, refetch: () => fetchGun(true) }
+  return {
+    gun: data || null,
+    loading: isLoading,
+    isFetching,
+    error: error?.message || null,
+    refetch,
+    invalidate: () => queryClient.invalidateQueries({ queryKey: ['gun', id] }),
+  }
 }
