@@ -4,11 +4,24 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    headers: {
+      'Cache-Control': 'public, max-age=86400', // Enable disk caching for browser
+    },
+  },
+  preview: {
+    headers: {
+      'Cache-Control': 'public, max-age=86400',
+    },
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: { enabled: true },
+      // Disable service worker in dev so Chrome DevTools serves from (disk cache) / (memory cache)
+      devOptions: {
+        enabled: false,
+      },
       manifest: {
         name: 'Bore & Barrel',
         short_name: 'Bore & Barrel',
@@ -25,7 +38,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        // Query Caching: runtime caching strategy for all API & database queries
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
@@ -37,7 +49,7 @@ export default defineConfig({
               cacheName: 'api-query-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours cache TTL
+                maxAgeSeconds: 60 * 60 * 24,
               },
               cacheableResponse: {
                 statuses: [0, 200],
