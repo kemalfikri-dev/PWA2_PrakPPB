@@ -1746,3 +1746,420 @@
   object-fit: cover;
   border-right: none;
 }
+
+
+/* ---------------------------------------------------------------------------
+ * WhatsApp Direct Button & Card Footer
+ * --------------------------------------------------------------------------- */
+.wa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #25d366;
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wa-btn:hover {
+  background: #20ba5a;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+  transform: translateY(-1px);
+}
+
+.wa-btn--card {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 0 0 6px 6px;
+  font-size: 0.84rem;
+}
+
+.card-footer-wa {
+  margin-top: auto;
+  width: 100%;
+}
+
+.btn--wa {
+  background: #25d366;
+  color: #fff !important;
+  border: none;
+}
+
+.btn--wa:hover {
+  background: #20ba5a;
+}
+
+/* ---------------------------------------------------------------------------
+ * Multi-Image Gallery & Carousel
+ * --------------------------------------------------------------------------- */
+.card-multi-img-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  backdrop-filter: blur(4px);
+  z-index: 4;
+}
+
+.detail-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.detail-thumbnails {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.detail-thumb-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  border: 2px solid var(--line);
+  background: var(--lift);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.detail-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-thumb-btn--active {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
+}
+
+.gallery-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+}
+
+.gallery-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.gallery-nav-btn--prev {
+  left: 10px;
+}
+
+.gallery-nav-btn--next {
+  right: 10px;
+}
+
+.gallery-counter {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  z-index: 4;
+}
+
+/* Multi-image form styles */
+.multi-img-card {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  background: var(--lift);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.multi-img-card--primary {
+  border-color: var(--brass);
+}
+
+.multi-img-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.multi-img-badges {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  padding: 2px;
+}
+
+.badge-cover {
+  color: var(--brass);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-set-cover {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 0.68rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.badge-set-cover:hover {
+  text-decoration: underline;
+}
+
+.multi-img-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.85);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+ * Soft Delete / Archive Tab Switcher & Badges
+ * --------------------------------------------------------------------------- */
+.catalog-tab-switcher {
+  display: flex;
+  gap: 8px;
+  background: var(--lift);
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+.catalog-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--steel);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.catalog-tab-btn--active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.card--archived {
+  opacity: 0.85;
+  border-color: #f59e0b;
+}
+
+.card-archived-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #f59e0b;
+  color: #000;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  z-index: 4;
+}
+
+.card-act-btn--archive:hover {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.card-act-btn--restore:hover {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+/* ---------------------------------------------------------------------------
+ * Review CRUD & Thumbs Up / Down
+ * --------------------------------------------------------------------------- */
+.review-act-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: var(--steel);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.review-act-btn:hover {
+  border-color: var(--brass);
+  color: var(--ink);
+}
+
+.review-act-btn--danger:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.review-edit-box {
+  background: var(--lift);
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+.review-votes-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--lift);
+  color: var(--steel);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vote-btn:hover {
+  border-color: var(--brass);
+}
+
+.vote-btn--active-up {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.vote-btn--active-down {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* ---------------------------------------------------------------------------
+ * Profile Sections (Drafts, About, Contact)
+ * --------------------------------------------------------------------------- */
+.profile-section {
+  margin-top: 36px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.profile-draft-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: var(--lift);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profile-draft-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-draft-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.profile-draft-meta {
+  font-size: 0.84rem;
+  color: var(--steel);
+}
+
+.profile-draft-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-about-card,
+.profile-contact-card {
+  background: var(--lift);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+
+.profile-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.profile-contact-item:last-child {
+  margin-bottom: 0;
+}

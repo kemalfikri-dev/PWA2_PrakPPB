@@ -3,6 +3,11 @@ import { useState, useRef, useEffect } from 'react'
 /**
  * LazyImage — Lazy loads images using IntersectionObserver and native loading="lazy",
  * with skeleton placeholder and smooth fade-in transition.
+ *
+ * @param {Object} props
+ * @param {string} props.src - Target image source URL
+ * @param {string} props.alt - Alternative text
+ * @param {boolean} [props.priority] - If true, bypasses observer and loads immediately
  */
 export default function LazyImage({
   src,
@@ -12,18 +17,19 @@ export default function LazyImage({
   fallbackSrc = '/guns/pistol.svg',
   width,
   height,
+  priority = false,
   style = {},
   ...props
 }) {
   const [isInView, setIsInView] = useState(
-    () => typeof window === 'undefined' || !('IntersectionObserver' in window)
+    () => priority || typeof window === 'undefined' || !('IntersectionObserver' in window)
   )
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
   const wrapperRef = useRef(null)
 
   useEffect(() => {
-    if (isInView) return
+    if (priority || isInView) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -35,7 +41,7 @@ export default function LazyImage({
         })
       },
       {
-        rootMargin: '150px 0px',
+        rootMargin: '200px 0px',
         threshold: 0.01,
       }
     )
@@ -47,9 +53,9 @@ export default function LazyImage({
     return () => {
       observer.disconnect()
     }
-  }, [isInView])
+  }, [isInView, priority])
 
-  const imageSrc = hasError ? fallbackSrc : src
+  const imageSrc = hasError || !src ? fallbackSrc : src
 
   return (
     <div
@@ -86,7 +92,7 @@ export default function LazyImage({
           alt={alt}
           width={width}
           height={height}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
           onLoad={() => setIsLoaded(true)}
           onError={() => {
             setHasError(true)
@@ -95,7 +101,7 @@ export default function LazyImage({
           className={`${className} lazy-img ${isLoaded ? 'lazy-img--loaded' : 'lazy-img--loading'}`}
           style={{
             opacity: isLoaded ? 1 : 0,
-            transition: 'opacity 0.3s ease-in-out',
+            transition: 'opacity 0.25s ease-in-out',
             display: 'block',
           }}
           {...props}

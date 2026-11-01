@@ -7,6 +7,8 @@ import {
   PackageOpen,
   ChevronLeft,
   ChevronRight,
+  Archive,
+  Layers,
 } from 'lucide-react'
 import { useGuns } from '../hooks/useGuns'
 import GUNS_LOCAL from '../data/guns'
@@ -14,7 +16,8 @@ import GunCard from '../components/gun/GunCard'
 import GunDetail from '../components/gun/GunDetail'
 import AdvancedFilter from '../components/common/AdvancedFilter'
 import ConfirmModal from '../components/modals/ConfirmModal'
-import gunService from '../services/gunService'
+import gunService, { normalizeProduct } from '../services/gunService'
+import archiveStorage from '../utils/archiveStorage'
 import {
   matchesSearch,
   matchesCategory,
@@ -23,20 +26,44 @@ import {
 } from '../utils/helpers'
 
 /**
- * Catalog page — product listing with Pagination, Search, Filter & Lazy Loading.
+ * Catalog page — product listing with Pagination, Search, Filter, Lazy Loading,
+ * and Soft Delete (Arsip) / Restore / Permanent Delete.
  */
 export default function Catalog({ onNavigate }) {
   // ---- API data ----
   const { guns: apiGuns, loading, error, refetch } = useGuns({ limit: 100 })
   const [useLocal, setUseLocal] = useState(false)
+  const [archiveRefreshKey, setArchiveRefreshKey] = useState(0)
+
+  // Catalog view mode: 'active' | 'archived'
+  const [catalogMode, setCatalogMode] = useState('active')
 
   // Decide data source
   const rawGuns = useMemo(() => {
     if (useLocal || (error && apiGuns.length === 0)) {
-      return GUNS_LOCAL.map((g, i) => ({ ...g, id: g.id || `local-${i}` }))
+      return GUNS_LOCAL.map((g, i) => normalizeProduct({ ...g, id: g.id || `local-${i}` }))
     }
     return apiGuns
   }, [apiGuns, error, useLocal])
+
+  // Soft-deleted / Archived items
+  const archivedGuns = useMemo(() => {
+    // eslint-disable-next-line no-unused-expressions
+    archiveRefreshKey
+    return archiveStorage.getArchived()
+  }, [archiveRefreshKey])
+
+  const archivedIdSet = useMemo(() => {
+    return new Set(archivedGuns.map((g) => String(g.id || g.name)))
+  }, [archivedGuns])
+
+  // Active items (excluding soft-deleted)
+  const activeGuns = useMemo(() => {
+    return rawGuns.filter((g) => !archivedIdSet.has(String(g.id || g.name)))
+  }, [rawGuns, archivedIdSet])
+
+  // Current working dataset depending on mode
+  const currentDataset = catalogMode === 'active' ? activeGuns : archivedGuns
 
   // ---- filters / sort ----
   const [search, setSearch] = useState('')
@@ -51,11 +78,11 @@ export default function Catalog({ onNavigate }) {
   const categories = useMemo(() => extractCategories(rawGuns), [rawGuns])
 
   const filteredGuns = useMemo(() => {
-    let result = rawGuns.filter(
+    let result = currentDataset.filter(
       (g) => matchesSearch(g, search) && matchesCategory(g, activeCategory),
     )
     return sortItems(result, sortKey, sortOrder)
-  }, [rawGuns, search, activeCategory, sortKey, sortOrder])
+  }, [currentDataset, search, activeCategory, sortKey, sortOrder])
 
   // Filter change handlers that reset page
   const handleSearchChange = (val) => {
@@ -103,21 +130,44 @@ export default function Catalog({ onNavigate }) {
   // ---- detail view ----
   const [selectedGun, setSelectedGun] = useState(null)
 
-  // ---- delete ----
+  // ---- Soft Delete (Archive) / Restore ----
+  const handleArchiveGun = (gun) => {
+    archiveStorage.archive(gun)
+    setArchiveRefreshKey((k) => k + 1)
+  }
+
+  const handleRestoreGun = (gun) => {
+    archiveStorage.restore(gun.id || gun.name)
+    setArchiveRefreshKey((k) => k + 1)
+  }
+
+  // ---- Permanent Delete ----
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  const handleDelete = async () => {
+  const handleDeletePermanent = async () => {
     if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
-      await gunService.deleteGun(deleteTarget.id)
+
+      // Remove from backend if exists
+      if (deleteTarget.id && !String(deleteTarget.id).startsWith('local-')) {
+        try {
+          await gunService.deleteGun(deleteTarget.id)
+        } catch (e) {
+          console.warn('Backend delete failed, removing locally:', e)
+        }
+      }
+
+      // Remove from archive storage
+      archiveStorage.permanentDelete(deleteTarget.id || deleteTarget.name)
+      setArchiveRefreshKey((k) => k + 1)
       setDeleteTarget(null)
       refetch()
     } catch (err) {
-      setDeleteError(err.message || 'Failed to delete.')
+      setDeleteError(err.message || 'Failed to delete permanently.')
     } finally {
       setDeleting(false)
     }
@@ -135,11 +185,9 @@ export default function Catalog({ onNavigate }) {
     )
   }
 
-  // Calculate item range for pagination info
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
   const endItem = Math.min(currentPage * itemsPerPage, totalItems)
 
-  // ---- Main catalog view ----
   return (
     <>
       <section className="masthead">
@@ -151,8 +199,27 @@ export default function Catalog({ onNavigate }) {
       </section>
 
       <section>
-        <div id="catalog-stock-heading" className="list-head">
-          <h2>Current stock</h2>
+        <div id="catalog-stock-heading" className="list-head" style={{ flexWrap: 'wrap', gap: '12px' }}>
+          {/* Active vs Archived Toggle */}
+          <div className="catalog-tab-switcher">
+            <button
+              type="button"
+              className={`catalog-tab-btn ${catalogMode === 'active' ? 'catalog-tab-btn--active' : ''}`}
+              onClick={() => { setCatalogMode('active'); setPage(1) }}
+            >
+              <Layers size={15} />
+              <span>Stok Aktif ({activeGuns.length})</span>
+            </button>
+            <button
+              type="button"
+              className={`catalog-tab-btn ${catalogMode === 'archived' ? 'catalog-tab-btn--active' : ''}`}
+              onClick={() => { setCatalogMode('archived'); setPage(1) }}
+            >
+              <Archive size={15} />
+              <span>Arsip / Soft-Deleted ({archivedGuns.length})</span>
+            </button>
+          </div>
+
           <div className="list-head-right">
             <span className="count">
               {totalItems} piece{totalItems !== 1 ? 's' : ''}
@@ -181,7 +248,7 @@ export default function Catalog({ onNavigate }) {
           onSort={handleSortChange}
         />
 
-        {/* States */}
+        {/* Loading & Error States */}
         {loading && (
           <div className="state-box">
             <Loader size={28} className="spin" />
@@ -211,7 +278,11 @@ export default function Catalog({ onNavigate }) {
         {!loading && totalItems === 0 && !error && (
           <div className="state-box">
             <PackageOpen size={28} />
-            <p>No products match your search.</p>
+            <p>
+              {catalogMode === 'archived'
+                ? 'Tidak ada produk di dalam arsip / soft-deleted.'
+                : 'No products match your search.'}
+            </p>
           </div>
         )}
 
@@ -223,6 +294,7 @@ export default function Catalog({ onNavigate }) {
                 <GunCard
                   key={gun.id || gun.name}
                   gun={gun}
+                  isArchived={catalogMode === 'archived'}
                   onSelect={(g) => {
                     if (onNavigate) {
                       onNavigate('Detail', g)
@@ -231,6 +303,8 @@ export default function Catalog({ onNavigate }) {
                     }
                   }}
                   onEdit={onNavigate ? (g) => onNavigate('Edit', g) : undefined}
+                  onArchive={handleArchiveGun}
+                  onRestore={handleRestoreGun}
                   onDelete={setDeleteTarget}
                 />
               ))}
@@ -336,15 +410,19 @@ export default function Catalog({ onNavigate }) {
         )}
       </section>
 
-      {/* Delete confirmation */}
+      {/* Delete confirmation modal */}
       <ConfirmModal
         open={!!deleteTarget}
-        title="Delete Product"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title={catalogMode === 'archived' ? 'Hapus Permanen Produk' : 'Hapus / Arsipkan Produk'}
+        message={
+          catalogMode === 'archived'
+            ? `Apakah Anda yakin ingin menghapus permanen "${deleteTarget?.name}"? Tindakan ini tidak dapat dibatalkan.`
+            : `Apakah Anda yakin ingin menghapus "${deleteTarget?.name}"? Anda juga dapat mengarsipkannya (soft delete).`
+        }
+        confirmLabel="Hapus Permanen"
         danger
         loading={deleting}
-        onConfirm={handleDelete}
+        onConfirm={handleDeletePermanent}
         onCancel={() => { setDeleteTarget(null); setDeleteError('') }}
       />
       {deleteError && (

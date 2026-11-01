@@ -1,49 +1,64 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Shield,
   Copy,
   Check,
-  Save,
   Heart,
   FileText,
-  Camera,
   Play,
+  Edit3,
+  Trash2,
+  ExternalLink,
+  Info,
+  MapPin,
+  Phone,
+  Clock,
 } from 'lucide-react'
 import userService from '../services/userService'
 import { useFavorites } from '../hooks/useFavorites'
-
-/**
- * Get count of active drafts in localStorage
- */
-const getActiveDraftCount = () => {
-  try {
-    let count = 0
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && (key.startsWith('bore_barrel_draft_') || key.startsWith('recipe_draft_'))) {
-        count++
-      }
-    }
-    return count
-  } catch {
-    return 0
-  }
-}
+import {
+  getAllDraftIds,
+  loadDraft,
+  deleteDraft,
+  formatDraftTime,
+} from '../utils/draftStorage'
+import { formatPrice } from '../utils/helpers'
 
 /**
  * ProfilePage — User identity and Armory settings.
- * Manages operator profile, identifier, favorites stats, and draft storage.
+ * Includes:
+ *   - Operator Identity with dedicated "Edit Profile" navigation
+ *   - Section Draft: lists all catalog items saved as drafts
+ *   - Section About: armory information moved from About page
+ *   - Section Contact: contact and location details moved from Contact page
  */
-export default function ProfilePage({ onReplaySplash }) {
-  const [profile, setProfile] = useState(() => userService.getUserProfile())
-  const [username, setUsername] = useState(profile.username || 'Shooter')
-  const [bio, setBio] = useState(profile.bio || '')
-  const [avatar, setAvatar] = useState(profile.avatar || null)
+export default function ProfilePage({ onReplaySplash, onNavigateEditProfile, onNavigateCreate, onNavigateEditGun }) {
+  const [profile] = useState(() => userService.getUserProfile())
   const [copied, setCopied] = useState(false)
-  const [feedback, setFeedback] = useState('')
+  const [draftRefreshKey, setDraftRefreshKey] = useState(0)
 
   const { favorites } = useFavorites()
-  const [draftCount] = useState(getActiveDraftCount)
+
+  // Load all current drafts
+  const drafts = useMemo(() => {
+    // eslint-disable-next-line no-unused-expressions
+    draftRefreshKey
+    const ids = getAllDraftIds()
+    return ids
+      .map((id) => {
+        const data = loadDraft(id)
+        if (!data) return null
+        return {
+          id,
+          name: data.formData?.name || data.name || (id === 'create' ? 'New Hardware Draft' : `Draft #${id.slice(0, 8)}`),
+          type: data.formData?.type || data.type || 'Hardware',
+          price: data.formData?.price ?? data.price ?? 0,
+          savedAt: data.savedAt,
+          raw: data,
+        }
+      })
+      .filter(Boolean)
+  }, [draftRefreshKey])
 
   const handleCopyId = () => {
     if (profile.userId) {
@@ -53,42 +68,18 @@ export default function ProfilePage({ onReplaySplash }) {
     }
   }
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    if (file.size > 2 * 1024 * 1024) {
-      setFeedback('Avatar image must be under 2MB.')
-      setTimeout(() => setFeedback(''), 3000)
-      return
+  const handleDeleteDraft = (draftId) => {
+    if (window.confirm('Hapus draft ini dari penyimpanan lokal?')) {
+      deleteDraft(draftId)
+      setDraftRefreshKey((k) => k + 1)
     }
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const base64 = event.target.result
-      setAvatar(base64)
-      userService.updateAvatar(base64)
-      setFeedback('Avatar updated.')
-      setTimeout(() => setFeedback(''), 3000)
-    }
-    reader.readAsDataURL(file)
   }
 
-  const handleSaveProfile = (e) => {
-    e.preventDefault()
-    const updated = {
-      ...profile,
-      username: username.trim() || 'Shooter',
-      bio: bio.trim(),
-      avatar,
-    }
-    const result = userService.saveUserProfile(updated)
-    if (result.success) {
-      setProfile(result.data)
-      setFeedback('Profile successfully updated.')
-      setTimeout(() => setFeedback(''), 3000)
+  const handleOpenDraft = (draft) => {
+    if (draft.id === 'create') {
+      if (onNavigateCreate) onNavigateCreate()
     } else {
-      setFeedback('Failed to save profile.')
+      if (onNavigateEditGun) onNavigateEditGun({ id: draft.id, ...draft.raw.formData })
     }
   }
 
@@ -98,48 +89,44 @@ export default function ProfilePage({ onReplaySplash }) {
         <div>
           <h1 className="display">Operator Profile</h1>
           <p className="lede">
-            Operator credentials, procurement statistics, and armorer details.
+            Operator credentials, procurement statistics, drafts, and armorer information.
           </p>
         </div>
-        {onReplaySplash && (
-          <button
-            type="button"
-            className="btn btn--outline btn--sm"
-            onClick={onReplaySplash}
-            title="Replay introductory splash animation"
-          >
-            <Play size={14} /> Replay Intro
-          </button>
-        )}
-      </section>
-
-      {feedback && (
-        <div className="toast toast--success">
-          <Check size={18} /> {feedback}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {onNavigateEditProfile && (
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={onNavigateEditProfile}
+              title="Edit operator profile on new page"
+            >
+              <Edit3 size={14} /> Edit Profile
+            </button>
+          )}
+          {onReplaySplash && (
+            <button
+              type="button"
+              className="btn btn--outline btn--sm"
+              onClick={onReplaySplash}
+              title="Replay introductory splash animation"
+            >
+              <Play size={14} /> Replay Intro
+            </button>
+          )}
         </div>
-      )}
+      </section>
 
       {/* Operator Card */}
       <div className="profile-card">
         <div className="profile-card-top">
           <div className="avatar-wrap">
-            {avatar ? (
-              <img src={avatar} alt={profile.username} className="avatar-img" />
+            {profile.avatar ? (
+              <img src={profile.avatar} alt={profile.username} className="avatar-img" />
             ) : (
               <div className="avatar-placeholder">
                 <Shield size={36} stroke="var(--brass)" />
               </div>
             )}
-            <label htmlFor="avatar-file-input" className="avatar-upload-btn" title="Upload avatar">
-              <Camera size={14} />
-              <input
-                id="avatar-file-input"
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden-file-input"
-              />
-            </label>
           </div>
 
           <div className="profile-identity">
@@ -155,6 +142,7 @@ export default function ProfilePage({ onReplaySplash }) {
                 {copied ? <Check size={14} color="var(--brass)" /> : <Copy size={14} />}
               </button>
             </div>
+            {profile.bio && <p className="profile-bio-text">{profile.bio}</p>}
           </div>
         </div>
 
@@ -167,48 +155,103 @@ export default function ProfilePage({ onReplaySplash }) {
           </div>
           <div className="stat-item">
             <FileText size={20} className="stat-icon" stroke="var(--steel)" />
-            <div className="stat-val">{draftCount}</div>
+            <div className="stat-val">{drafts.length}</div>
             <div className="stat-label">Saved Offline Drafts</div>
           </div>
         </div>
       </div>
 
-      {/* Profile Form */}
-      <form onSubmit={handleSaveProfile} className="profile-form">
-        <h3 className="section-title">Armorer Details</h3>
-
-        <div className="form-group">
-          <label htmlFor="prof-name" className="form-label">
-            Callsign / Operator Alias
-          </label>
-          <input
-            id="prof-name"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="e.g. Operator Delta, Master Gunsmith"
-            className="form-input"
-          />
+      {/* SECTION 1: DRAFTS LIST */}
+      <section className="profile-section">
+        <div className="list-head" style={{ marginBottom: '16px' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={20} /> Drafts Katalog
+          </h2>
+          <span className="count">{drafts.length} draft{drafts.length !== 1 ? 's' : ''}</span>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="prof-bio" className="form-label">
-            Armory Notes / Station Bio
-          </label>
-          <textarea
-            id="prof-bio"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Qualifications, preferred calibers, unit assignment..."
-            rows={3}
-            className="form-textarea"
-          />
-        </div>
+        {drafts.length > 0 ? (
+          <ul className="profile-draft-list" style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {drafts.map((d) => (
+              <li key={d.id} className="profile-draft-item">
+                <div className="profile-draft-info">
+                  <span className="profile-draft-title">{d.name}</span>
+                  <span className="profile-draft-meta">
+                    {d.type} · {formatPrice(d.price)} · Disimpan {formatDraftTime(d.savedAt)}
+                  </span>
+                </div>
+                <div className="profile-draft-actions">
+                  <button
+                    type="button"
+                    className="btn btn--outline btn--sm"
+                    onClick={() => handleOpenDraft(d)}
+                    title="Lanjutkan edit draft"
+                  >
+                    <ExternalLink size={14} /> Buka Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--outline btn--sm"
+                    style={{ borderColor: 'var(--red)', color: 'var(--red)' }}
+                    onClick={() => handleDeleteDraft(d.id)}
+                    title="Hapus draft"
+                  >
+                    <Trash2 size={14} /> Hapus
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="state-box" style={{ padding: '24px' }}>
+            <p style={{ color: 'var(--steel)' }}>Tidak ada draft katalog yang tersimpan.</p>
+          </div>
+        )}
+      </section>
 
-        <button type="submit" className="btn btn--primary">
-          <Save size={16} /> Save Armorer Profile
-        </button>
-      </form>
+      {/* SECTION 2: ABOUT (Moved from About page) */}
+      <section className="profile-section">
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <Info size={20} /> Tentang Bore &amp; Barrel (About)
+        </h2>
+        <div className="profile-about-card">
+          <h3 className="display" style={{ fontSize: '1.4rem', marginBottom: '8px' }}>
+            A one-room armory.
+          </h3>
+          <p className="lede" style={{ margin: 0, fontSize: '0.98rem', lineHeight: '1.6' }}>
+            Bore &amp; Barrel sells a short, honest list of firearms. Each piece is priced
+            from the bench — no markup theatre, no filler. Every unit undergoes strict inspection
+            and spec sheet validation before arriving at our armory shelves.
+          </p>
+        </div>
+      </section>
+
+      {/* SECTION 3: CONTACT (Moved from Contact page) */}
+      <section className="profile-section">
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <MapPin size={20} /> Kontak &amp; Lokasi (Contact)
+        </h2>
+        <div className="profile-contact-card">
+          <div className="profile-contact-item">
+            <MapPin size={18} stroke="var(--brass)" />
+            <div>
+              <strong>Armory Workshop:</strong> 123 Range Road, Sector 7
+            </div>
+          </div>
+          <div className="profile-contact-item">
+            <Clock size={18} stroke="var(--steel)" />
+            <div>
+              <strong>Hours:</strong> Tuesday to Saturday, 10:00 – 18:00
+            </div>
+          </div>
+          <div className="profile-contact-item">
+            <Phone size={18} stroke="var(--brass)" />
+            <div>
+              <strong>Phone / Dispatch:</strong> (555) 010-0100
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

@@ -1,4 +1,6 @@
 import { apiClient, IS_SUPABASE } from '../config/api'
+import queryCache from '../utils/queryCache'
+import gunImagesStorage from '../utils/gunImagesStorage'
 
 // ---------------------------------------------------------------------------
 // Normalizer — standardizes product shape whether received from Supabase
@@ -38,6 +40,9 @@ export const normalizeProduct = (item) => {
       ? item.steps
       : ['Verify firearm is completely unloaded and point in safe direction.', 'Inspect receiver and mechanism for maintenance.']
 
+  // Resolve multiple images guaranteed via gunImagesStorage
+  const imagesList = gunImagesStorage.resolveImages(item)
+
   return {
     ...item,
     id: item.id,
@@ -47,17 +52,17 @@ export const normalizeProduct = (item) => {
     caliber: item.caliber || 'Standard',
     price: Number(item.price ?? item.cook_time ?? 0),
     description: item.description || '',
-    image_url: item.image_url || item.image || '/guns/pistol.svg',
-    image: item.image_url || item.image || '/guns/pistol.svg',
+    image_url: imagesList[0] || item.image_url || item.image || '/guns/pistol.svg',
+    image: imagesList[0] || item.image_url || item.image || '/guns/pistol.svg',
+    images: imagesList,
+    seller_phone: item.seller_phone || '6281234567890',
     ingredients: specsList,
     steps: stepsList,
   }
 }
 
 // ---------------------------------------------------------------------------
-// GunService — wraps backend CRUD endpoints.
-// Supports both Supabase PostgREST table (/rest/v1/products) and
-// standard REST API (/api/v1/recipes).
+// GunService — wraps backend CRUD endpoints with Query Cache invalidation.
 // ---------------------------------------------------------------------------
 class GunService {
   /**
@@ -105,7 +110,11 @@ class GunService {
     const clean = Object.fromEntries(
       Object.entries(params).filter(([, v]) => v !== '' && v != null),
     )
-    return apiClient.get('/api/v1/recipes', { params: clean })
+    const res = await apiClient.get('/api/v1/recipes', { params: clean })
+    if (res && Array.isArray(res.data)) {
+      res.data = res.data.map(normalizeProduct)
+    }
+    return res
   }
 
   /**
@@ -119,13 +128,24 @@ class GunService {
       }
       throw new Error('Hardware item not found.')
     }
-    return apiClient.get(`/api/v1/recipes/${id}`)
+    const res = await apiClient.get(`/api/v1/recipes/${id}`)
+    if (res && res.data) {
+      res.data = normalizeProduct(res.data)
+    }
+    return res
   }
 
   /**
    * Create a new product.
    */
   async createGun(data) {
+    queryCache.invalidate('guns')
+
+    // Persist multiple images locally so they are never lost
+    if (Array.isArray(data.images) && data.images.length > 0) {
+      gunImagesStorage.saveImages(data.name, data.images)
+    }
+
     if (IS_SUPABASE) {
       const specsArray = Array.isArray(data.ingredients)
         ? data.ingredients.map((i) => `${i.name}: ${i.quantity}`)
@@ -140,22 +160,38 @@ class GunService {
         price: Number(data.price ?? data.cook_time ?? 0),
         description: data.description || '',
         specs: specsArray,
-        image_url: data.image_url || null,
+        image_url: data.image_url || (Array.isArray(data.images) ? data.images[0] : null),
       }
 
       const res = await apiClient.post('/rest/v1/products', payload, {
         headers: { Prefer: 'return=representation' },
       })
       const created = Array.isArray(res) ? res[0] : res
+      if (created?.id && Array.isArray(data.images)) {
+        gunImagesStorage.saveImages(created.id, data.images)
+      }
       return { success: true, data: normalizeProduct(created) }
     }
-    return apiClient.post('/api/v1/recipes', data)
+
+    const res = await apiClient.post('/api/v1/recipes', data)
+    if (res?.data?.id && Array.isArray(data.images)) {
+      gunImagesStorage.saveImages(res.data.id, data.images)
+    }
+    return res
   }
 
   /**
    * Update existing product.
    */
   async updateGun(id, data) {
+    queryCache.invalidate('guns')
+    queryCache.delete(`gun_${id}`)
+
+    if (Array.isArray(data.images) && data.images.length > 0) {
+      gunImagesStorage.saveImages(id, data.images)
+      if (data.name) gunImagesStorage.saveImages(data.name, data.images)
+    }
+
     if (IS_SUPABASE) {
       const specsArray = Array.isArray(data.ingredients)
         ? data.ingredients.map((i) => `${i.name}: ${i.quantity}`)
@@ -189,6 +225,8 @@ class GunService {
    * Partial update (PATCH).
    */
   async patchGun(id, data) {
+    queryCache.invalidate('guns')
+    queryCache.delete(`gun_${id}`)
     if (IS_SUPABASE) {
       return this.updateGun(id, data)
     }
@@ -199,6 +237,9 @@ class GunService {
    * Delete product.
    */
   async deleteGun(id) {
+    queryCache.invalidate('guns')
+    queryCache.delete(`gun_${id}`)
+
     if (IS_SUPABASE) {
       await apiClient.delete(`/rest/v1/products?id=eq.${id}`)
       return { success: true }

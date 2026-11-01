@@ -4,7 +4,7 @@ import Footer from './components/Footer.jsx'
 import PWABadge from './components/PWABadge.jsx'
 import ConfirmModal from './components/modals/ConfirmModal.jsx'
 import SplashScreen from './components/common/SplashScreen.jsx'
-import gunService from './services/gunService.js'
+import gunService, { normalizeProduct } from './services/gunService.js'
 import GUNS_LOCAL from './data/guns.js'
 import { Loader } from 'lucide-react'
 import './App.css'
@@ -13,11 +13,10 @@ import './App.css'
 const Catalog = lazy(() => import('./pages/Catalog.jsx'))
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage.jsx'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
+const EditProfilePage = lazy(() => import('./pages/EditProfilePage.jsx'))
 const CreateGunPage = lazy(() => import('./pages/CreateGunPage.jsx'))
 const EditGunPage = lazy(() => import('./pages/EditGunPage.jsx'))
 const GunDetail = lazy(() => import('./components/gun/GunDetail.jsx'))
-const About = lazy(() => import('./pages/About.jsx'))
-const Contact = lazy(() => import('./pages/Contact.jsx'))
 
 // Suspense loading fallback
 function ModuleLoader() {
@@ -32,7 +31,7 @@ function ModuleLoader() {
 function App() {
   const [showSplash, setShowSplash] = useState(true)
   const [tab, setTab] = useState('Catalog')
-  const [mode, setMode] = useState('list') // 'list' | 'create' | 'edit' | 'detail'
+  const [mode, setMode] = useState('list') // 'list' | 'create' | 'edit' | 'detail' | 'edit-profile'
   const [selectedGun, setSelectedGun] = useState(null)
   const [editingGun, setEditingGun] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -59,7 +58,7 @@ function App() {
       const decodedParam = decodeURIComponent(gunParam).trim().toLowerCase()
 
       // 1. Look in local guns
-      const localEnriched = GUNS_LOCAL.map((g, i) => ({ ...g, id: g.id || `local-${i}` }))
+      const localEnriched = GUNS_LOCAL.map((g, i) => normalizeProduct({ ...g, id: g.id || `local-${i}` }))
       const foundLocal = localEnriched.find(
         (g) =>
           String(g.id).toLowerCase() === decodedParam ||
@@ -132,6 +131,9 @@ function App() {
       setMode('detail')
       updateGunUrl(payload)
       window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else if (target === 'EditProfile') {
+      setMode('edit-profile')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
       // Tab change
       updateGunUrl(null)
@@ -196,6 +198,19 @@ function App() {
             />
           )}
 
+          {mode === 'edit-profile' && (
+            <EditProfilePage
+              onBack={() => {
+                setMode('list')
+                setTab('Profile')
+              }}
+              onSuccess={() => {
+                setMode('list')
+                setTab('Profile')
+              }}
+            />
+          )}
+
           {/* Top-level Tabs */}
           {mode === 'list' && (
             <>
@@ -211,10 +226,13 @@ function App() {
                 />
               )}
               {tab === 'Profile' && (
-                <ProfilePage onReplaySplash={() => setShowSplash(true)} />
+                <ProfilePage
+                  onReplaySplash={() => setShowSplash(true)}
+                  onNavigateEditProfile={() => handleNavigate('EditProfile')}
+                  onNavigateCreate={() => handleNavigate('Create')}
+                  onNavigateEditGun={(g) => handleNavigate('Edit', g)}
+                />
               )}
-              {tab === 'About' && <About />}
-              {tab === 'Contact' && <Contact />}
             </>
           )}
         </Suspense>

@@ -1,40 +1,63 @@
 import FavoriteButton from '../common/FavoriteButton'
 import ShareButton from '../common/ShareButton'
+import WhatsAppButton from '../common/WhatsAppButton'
 import LazyImage from '../common/LazyImage'
 import { formatPrice, truncate } from '../../utils/helpers'
+import { Archive, RotateCcw, Trash2, Camera } from 'lucide-react'
+import gunImagesStorage from '../../utils/gunImagesStorage'
 
 /**
  * Product card used in the catalog grid.
- *
- * @param {Object}   props
- * @param {Object}   props.gun       — product data
- * @param {Function} props.onSelect  — called with the gun when clicked
- * @param {Function} [props.onEdit]  — called when Edit is clicked (admin)
- * @param {Function} [props.onDelete]— called when Delete is clicked (admin)
+ * Supports multi-image indicators, WhatsApp direct contact, Soft Delete / Archive, and Restore.
  */
-export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
-  const imgSrc = gun.image_url || gun.image || '/guns/pistol.svg'
+export default function GunCard({
+  gun,
+  onSelect,
+  onEdit,
+  onDelete,
+  onArchive,
+  onRestore,
+  isArchived = false,
+}) {
+  const allImages = gunImagesStorage.resolveImages(gun)
+  const imgSrc = allImages[0]
+  const imageCount = allImages.length
+
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
 
   return (
-    <li className="card">
+    <li className={`card ${isArchived ? 'card--archived' : ''}`}>
       <button
         type="button"
         className="card-btn"
         onClick={() => onSelect(gun)}
         aria-label={`View ${gun.name}`}
       >
-        <LazyImage
-          className="card-img"
-          wrapperClassName="card-img-wrap"
-          src={imgSrc}
-          alt={gun.name}
-          width="240"
-          height="180"
-          fallbackSrc="/guns/pistol.svg"
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <LazyImage
+            className="card-img"
+            wrapperClassName="card-img-wrap"
+            src={imgSrc}
+            alt={gun.name}
+            width="240"
+            height="180"
+            fallbackSrc="/guns/pistol.svg"
+          />
+
+          {/* Multi-image badge */}
+          {imageCount > 1 && (
+            <span className="card-multi-img-badge" title={`${imageCount} images available`}>
+              <Camera size={12} /> {imageCount}
+            </span>
+          )}
+
+          {/* Archived badge */}
+          {isArchived && (
+            <span className="card-archived-badge">Arsip / Soft-Deleted</span>
+          )}
+        </div>
 
         <span className="name display">{gun.name}</span>
 
@@ -52,10 +75,10 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
 
       {/* Floating actions row */}
       <div className="card-actions">
-        <FavoriteButton gunId={gun.id || gun.name} />
+        {!isArchived && <FavoriteButton gunId={gun.id || gun.name} />}
         <ShareButton gun={gun} className="card-act-btn" />
 
-        {onEdit && (
+        {!isArchived && onEdit && (
           <button
             type="button"
             className="card-act-btn"
@@ -67,17 +90,49 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
           </button>
         )}
 
+        {/* Soft Delete / Archive button */}
+        {!isArchived && onArchive && (
+          <button
+            type="button"
+            className="card-act-btn card-act-btn--archive"
+            onClick={(e) => { e.stopPropagation(); onArchive(gun) }}
+            aria-label={`Arsipkan ${gun.name}`}
+            title="Arsipkan (Soft Delete)"
+          >
+            <Archive size={14} />
+          </button>
+        )}
+
+        {/* Restore button if already archived */}
+        {isArchived && onRestore && (
+          <button
+            type="button"
+            className="card-act-btn card-act-btn--restore"
+            onClick={(e) => { e.stopPropagation(); onRestore(gun) }}
+            aria-label={`Restore ${gun.name}`}
+            title="Restore ke Katalog"
+          >
+            <RotateCcw size={14} color="#10b981" />
+          </button>
+        )}
+
+        {/* Delete permanent button */}
         {onDelete && (
           <button
             type="button"
             className="card-act-btn card-act-btn--danger"
             onClick={(e) => { e.stopPropagation(); onDelete(gun) }}
-            aria-label={`Delete ${gun.name}`}
-            title="Delete"
+            aria-label={`Hapus ${gun.name}`}
+            title={isArchived ? 'Hapus Permanen' : 'Hapus'}
           >
-            🗑️
+            <Trash2 size={14} />
           </button>
         )}
+      </div>
+
+      {/* WhatsApp direct contact button at bottom of card */}
+      <div className="card-footer-wa">
+        <WhatsAppButton gun={gun} className="wa-btn--card" />
       </div>
     </li>
   )
