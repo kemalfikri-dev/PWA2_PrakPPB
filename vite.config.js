@@ -25,6 +25,26 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // Query Caching: runtime caching strategy for all API & database queries
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.includes('/rest/v1/') ||
+              url.pathname.includes('/api/v1/') ||
+              url.hostname.includes('supabase.co'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-query-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours cache TTL
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
     }),
   ],
